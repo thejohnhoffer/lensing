@@ -8,7 +8,6 @@ import IconFilterConfig from "./assets/lensing_filter_config.svg";
 export default class Controls {
 
     // Vars
-    slider = null;
     on = true;
 
     /**
@@ -66,43 +65,6 @@ export default class Controls {
         );
         container.appendChild(this.lensReport);
         this.updateReport();
-
-        // Build iconKeyboard
-        const iconKeyboard = new Image();
-        iconKeyboard.src = IconKeyboard;
-        iconKeyboard.alt = 'Keyboard Icon';
-        iconKeyboard.setAttribute('style', `height: ${iconLilW}px; width: ${iconLilW}px; `
-            + `position: relative; margin: ${iconPad / 2}px;`
-        );
-        container.appendChild(iconKeyboard);
-
-        // Build iconFilterConfig
-        const iconFilterConfig = new Image();
-        iconFilterConfig.src = IconFilterConfig;
-        iconFilterConfig.alt = 'Keyboard Icon';
-        iconFilterConfig.setAttribute('style', `height: ${iconLilW}px; width: ${iconLilW}px; `
-            + `position: relative; margin: ${iconPad / 2}px;`
-        );
-        container.appendChild(iconFilterConfig);
-
-        // Build slider - TODO: style the range handle
-        this.slider = document.createElement('input');
-        this.slider.setAttribute('type', 'range');
-        this.slider.setAttribute('min', '0');
-        this.slider.setAttribute('max', '255');
-        this.slider.setAttribute('value', '127');
-        this.slider.setAttribute('step', '1');
-        this.slider.setAttribute('style', `width: ${sliderWH[1]}px; height: ${2}px; `
-            + `position: relative; margin-top: ${sliderWH[1] / 2 + 10}px; `
-            + `-webkit-appearance: none; appearance: none; transform: rotate(90deg); outline: white; `
-            + `background-color: black; border: 1px solid rgba(255, 255, 255, 0.2);`
-        );
-        container.append(this.slider);
-
-        // Add event
-        this.slider.addEventListener('change', this.handleSliderChange.bind(this));
-
-
     }
 
     /** - TODO :: ckpt. 20220706
