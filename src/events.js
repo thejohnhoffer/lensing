@@ -242,7 +242,6 @@ export default class Events {
             this.lensing.configs.counterException = true;
             this.lensing.manage_slider_update();
             this.lensing.manage_viewfinder_update();
-            this.lensing.controls.updateReport();
             this.lensing.manageLensUpdate();
         }
 
@@ -331,7 +330,6 @@ export default class Events {
             this.lensing.configs.counterException = true;
             this.lensing.positionData.refPoint = this.lensing.positionData.eventPoint;
             this.lensing.positionData.zoom = this.lensing.viewer.viewport.getZoom(true);
-            this.lensing.controls.updateReport();
             this.lensing.viewerAux.raiseEvent('click', {eventType: 'zoom', immediately: true});
         }
 
