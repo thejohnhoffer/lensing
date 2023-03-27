@@ -88,11 +88,7 @@ export default class Viewfinder {
         // Define this
         const vis = this;
 
-        if (vis.lensing.configs.on) {
-            d3.select(vis.lensing.overlay.container).style('opacity', '1');
-        } else {
-            d3.select(vis.lensing.overlay.container).style('opacity', '0');
-        }
+        d3.select(vis.lensing.overlay.container).style('opacity', '1');
 
         if (vis.on) {
 

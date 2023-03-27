@@ -115,6 +115,7 @@ export default class Lensing {
      */
     init() {
 
+        this.rootEl = document.querySelector(`#${this.viewerConfig.id}`);
         // Build magnifier viewer (hidden viewer)
         this.viewerAux = this.buildHiddenViewer();
 
@@ -149,7 +150,11 @@ export default class Lensing {
         // Add event listeners to viewer
         this.events = new Events(this);
         this.events.bulkAttachEvents();
+        this.recenter();
+    }
 
+    recenter() {
+        this.events.handleViewerOpen();
     }
 
     /** - FIXME :: revisit when data is passed in (post-'bare bones' phase)
@@ -176,15 +181,14 @@ export default class Lensing {
     buildHiddenViewer() {
 
         // Update viewer positions
-        const viewerEl = document.querySelector(`#${this.viewerConfig.id}`)
-
-        viewerEl.style.position = 'relative';
+        const rootEl = this.rootEl;
+        rootEl.style.position = 'relative';
 
         // Instantiate hidden viewer that matches configuration from source viewer
         const viewerAux = new this.osd(this.viewerConfig);
 
         // Position (0 index is original source viewer; 1 index is hidden viewer)
-        const containers = viewerEl.querySelectorAll(`.openseadragon-container`);
+        const containers = rootEl.querySelectorAll(`.openseadragon-container`);
         containers[0].classList.add('lensing-c_main');
         containers[0].style.position = 'relative';
         containers[1].classList.add('lensing-c_aux')
@@ -211,8 +215,7 @@ export default class Lensing {
         // Build container
         const container = document.createElement('div');
         container.setAttribute('class', `overlay_container_${id} overlay_container`);
-        container.setAttribute('style',
-            `pointer-events: none; position: absolute;`);
+        container.setAttribute('style', 'position: absolute; pointer-events: none;');
         // container.setAttribute('style',
         //     `height: ${dims[0]}px; pointer-events: none; position: absolute; width: ${dims[1]}px;`);
 
@@ -221,12 +224,11 @@ export default class Lensing {
 
         // Build actualCanvas
         const actualCanvas = document.createElement('canvas');
-        // actualCanvas.setAttribute('width', `${dims[0] * this.configs.pxRatio}`);
-        // actualCanvas.setAttribute('height', `${dims[1] * this.configs.pxRatio}`);
+        actualCanvas.className = 'lens_overlay_canvas';
         actualCanvas.setAttribute('style',
-            'height: 100%; pointer-events: none; position: absolute; width: 100%;');
+            'height: 100%; pointer-events: all; position: absolute; width: 100%;');
 
-        // Append actualCanvas to container, container to viewer
+        // Append acvtualCanvas to container, container to viewer
         container.append(actualCanvas);
 
         // Return
@@ -327,73 +329,66 @@ export default class Lensing {
             this.overlay.container.style.top = css_y;
         }
 
-        if (this.configs.on) {
+        // Save
+        this.overlay.context.save();
 
-            // Save
-            this.overlay.context.save();
+        // Filter
+        let filteredD = this.lenses.modify(data.d);
 
-            // Filter
-            let filteredD = this.lenses.modify(data.d);
+        // Save
+        this.imgData = filteredD;
 
-            // Save
-            this.imgData = filteredD;
+        // Convert to bitmap
+        this.createTempoaryCanvas(filteredD).then(imgBitmap => {
 
-            // Convert to bitmap
-            this.createTempoaryCanvas(filteredD).then(imgBitmap => {
-
-                // Clip
-                if (this.configs.shape === 'circle') {
-                    this.overlay.context.beginPath();
-                    this.overlay.context.arc(this.configs.rad, this.configs.rad, this.configs.rad, 0, Math.PI * 2);
-                    this.overlay.context.clip();
-                }
-
-                // Draw
-                if (this.lenses.selections.magnifier.name === 'mag_standard') {
-                    this.overlay.context.drawImage(imgBitmap,
-                        0,
-                        0,
-                        this.configs.rad * 2,
-                        this.configs.rad * 2
-                    );
-                } else if (this.lenses.selections.magnifier.name === 'mag_fisheye') {
-                    this.overlay.context.scale(1 / this.configs.mag, 1 / this.configs.mag)
-                    this.overlay.context.drawImage(imgBitmap,
-                        0,
-                        0,
-                        this.configs.rad * 2 * this.configs.mag,
-                        this.configs.rad * 2 * this.configs.mag
-                    );
-                } else if (this.lenses.selections.magnifier.name === 'mag_plateau') {
-                    this.overlay.context.drawImage(imgBitmap,
-                        -(this.configs.mag - 1) * this.configs.rad,
-                        -(this.configs.mag - 1) * this.configs.rad,
-                        this.configs.rad * 2 * this.configs.mag,
-                        this.configs.rad * 2 * this.configs.mag
-                    );
-                }
-
-                // Restore
-                this.overlay.context.restore();
-
-                // Lens border / stroke
-                this.overlay.context.strokeStyle = `white`;
-                this.overlay.context.lineWidth = this.configs.pxRatio;
+            // Clip
+            if (this.configs.shape === 'circle') {
                 this.overlay.context.beginPath();
-                if (this.configs.shape === 'circle') {
-                    this.overlay.context.arc(this.configs.rad, this.configs.rad, this.configs.rad - 1, 0, Math.PI * 2);
-                } else if (this.configs.shape === 'square') {
-                    this.overlay.context.strokeRect(1, 1, (this.configs.rad - 1) * 2, (this.configs.rad - 1) * 2);
-                }
-                this.overlay.context.stroke();
+                this.overlay.context.arc(this.configs.rad, this.configs.rad, this.configs.rad, 0, Math.PI * 2);
+                this.overlay.context.clip();
+            }
 
-            }).catch(err => console.log(err));
+            // Draw
+            if (this.lenses.selections.magnifier.name === 'mag_standard') {
+                this.overlay.context.drawImage(imgBitmap,
+                    0,
+                    0,
+                    this.configs.rad * 2,
+                    this.configs.rad * 2
+                );
+            } else if (this.lenses.selections.magnifier.name === 'mag_fisheye') {
+                this.overlay.context.scale(1 / this.configs.mag, 1 / this.configs.mag)
+                this.overlay.context.drawImage(imgBitmap,
+                    0,
+                    0,
+                    this.configs.rad * 2 * this.configs.mag,
+                    this.configs.rad * 2 * this.configs.mag
+                );
+            } else if (this.lenses.selections.magnifier.name === 'mag_plateau') {
+                this.overlay.context.drawImage(imgBitmap,
+                    -(this.configs.mag - 1) * this.configs.rad,
+                    -(this.configs.mag - 1) * this.configs.rad,
+                    this.configs.rad * 2 * this.configs.mag,
+                    this.configs.rad * 2 * this.configs.mag
+                );
+            }
 
-        } else {
+            // Restore
+            this.overlay.context.restore();
 
-            // Update viewfinder
-            this.viewfinder.wrangle();
-        }
+            // Lens border / stroke
+            this.overlay.context.strokeStyle = `white`;
+            this.overlay.context.lineWidth = this.configs.pxRatio;
+            this.overlay.context.beginPath();
+            if (this.configs.shape === 'circle') {
+                this.overlay.context.arc(this.configs.rad, this.configs.rad, this.configs.rad - 1, 0, Math.PI * 2);
+            } else if (this.configs.shape === 'square') {
+                this.overlay.context.strokeRect(1, 1, (this.configs.rad - 1) * 2, (this.configs.rad - 1) * 2);
+            }
+            this.overlay.context.stroke();
+
+        }).catch(err => console.log(err));
+
     }
 
     /**

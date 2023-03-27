@@ -21,45 +21,31 @@ export default class Events {
      */
     bulkAttachEvents() {
 
-        // Click (or open)
-        this.lensing.viewerAux.addHandler('animation', this.handleViewerAnimation.bind(this));
-        this.lensing.viewerAux.addHandler('click', this.handleViewerAuxClick.bind(this));
-        this.lensing.viewerAux.addHandler('open', this.handleViewerAuxOpen.bind(this));
+        const lens_canvas = this.lensing.overlay.canvas;
+//        this.lensing.rootEl.addEventListener('mousemove', (e) => {
+        this.lensing.viewer.addHandler('canvas-drag', (e) => {
+          const x = e.position.x;
+          const y = e.position.y;
+          const at_point = document.elementsFromPoint(x, y);
+          const lens = [...at_point].find((target) => {
+            return target.className === "lens_overlay_canvas";
+          }) || null;
+          if(lens && e.originalEvent.buttons !== 0) {
+            this.lensing.positionData.currentEvent = 'pan';
+            this.lensing.positionData.screenCoords = [x, y];
+            this.lensing.setPosition(this.lensing.positionData.screenCoords);
+            this.lensing.manageLensUpdate();
+            e.preventDefaultAction = true;
+          }
+        });
 
-        // // Zoom-ing or pan-ing
-        this.lensing.viewer.addHandler('animation', this.handleViewerAnimation.bind(this));
-        this.lensing.viewer.addHandler('canvas-drag', this.handleViewerCanvasDrag.bind(this));
+        this.lensing.viewer.addHandler('animation', this.handleViewerAuxMove.bind(this));
         this.lensing.viewer.addHandler('open', this.handleViewerOpen.bind(this));
         this.lensing.viewer.addHandler('zoom', this.handleViewerZoom.bind(this));
-
-        // Mouse-ing
-        this.lensing.viewer.canvas.addEventListener('mouseover', this.handleViewerMouseover.bind(this));
-        this.lensing.viewer.canvas.addEventListener('mousemove', this.handleViewerMousemove.bind(this));
-        this.lensing.viewer.canvas.addEventListener('mouseout', this.handleViewerMouseout.bind(this));
 
         // Key-ing
         this.lensing.viewer.canvas.addEventListener('keydown', this.handleViewerKeydown.bind(this));
 
-    }
-
-    /** - TODO :: ckpt. 20220706
-     * @function handleViewerAnimation
-     * Manages hidden viewer zooming / positioning during zoom / pan events
-     *
-     * @returns void
-     */
-    handleViewerAnimation() {
-
-        // Update some position data
-        this.lensing.positionData.zoom = this.lensing.viewer.viewport.getZoom();
-        this.lensing.positionData.zoomAux = this.lensing.viewerAux.viewport.getZoom();
-
-        // If panning (dragging)
-        if (this.lensing.positionData.screenCoords.length > 0) {
-            this.lensing.setPosition(this.lensing.positionData.screenCoords);
-        } else {
-            this.lensing.manageLensUpdate();
-        }
     }
 
     /** - TODO :: ckpt. 20220706
@@ -72,62 +58,10 @@ export default class Events {
      */
     handleViewerCanvasDrag(e) {
 
+        console.log('...drag...')
         // Get pos data from event
         this.lensing.positionData.currentEvent = 'pan';
         this.lensing.positionData.screenCoords = [Math.round(e.position.x), Math.round(e.position.y)];
-    }
-
-    /** - TODO :: ckpt. 20220706
-     * @function handleViewerMouseover
-     * Turns on lens (if off), updates overlay and hidden viewer positions
-     *
-     * @param {Event} e
-     *
-     * @returns void
-     */
-    handleViewerMouseover(e) {
-
-        // Turn on lens
-        // this.configs.on = true;
-
-        // Set hidden viewer and overlay pos
-        this.lensing.positionData.screenCoords = [e.clientX - this.lensing.viewerAuxCanvas.getBoundingClientRect().x, e.clientY - this.lensing.viewerAuxCanvas.getBoundingClientRect().y];
-        this.lensing.setPosition(this.lensing.positionData.screenCoords);
-
-        // Update if not placed
-        this.lensing.manageLensUpdate();
-    }
-
-    /** - TODO :: ckpt. 20220706
-     * @function handleViewerMousemove
-     * Updates overlay and hidden viewer positions
-     *
-     * @param {Event} e
-     *
-     * @returns void
-     */
-    handleViewerMousemove(e) {
-
-        // Set hidden viewer and overlay pos
-        this.lensing.positionData.screenCoords = [e.clientX - this.lensing.viewerAuxCanvas.getBoundingClientRect().x, e.clientY - this.lensing.viewerAuxCanvas.getBoundingClientRect().y];
-        this.lensing.setPosition(this.lensing.positionData.screenCoords);
-
-        // If not placed
-        this.lensing.manageLensUpdate();
-    }
-
-    /** - TODO :: ckpt. 20220706
-     * @function handleViewerMouseout
-     * Turns off lens if not placed when mouse is outsider viewer
-     *
-     * @returns void
-     */
-    handleViewerMouseout() {
-
-        // If outside of viewer, turn off mouse
-        if (!this.lensing.configs.placed) {
-            // this.configs.on = false;
-        }
     }
 
     /** - TODO :: ckpt. 20220706
@@ -138,11 +72,19 @@ export default class Events {
      */
     handleViewerOpen() {
 
+        const screenRect = this.lensing.viewerAuxCanvas.getBoundingClientRect();
+        const mid_y = ( screenRect.top + screenRect.bottom ) / 2;
+        const mid_x = ( screenRect.left + screenRect.right ) / 2;
+    
         // Defaults
         this.lensing.positionData.refPoint = this.lensing.viewer.viewport.getCenter(false);
         this.lensing.positionData.centerPoint = this.lensing.viewer.viewport.getCenter(false);
         this.lensing.positionData.eventPoint = this.lensing.viewer.viewport.getCenter(false);
         this.lensing.positionData.zoom = this.lensing.viewer.viewport.getZoom(true);
+
+        this.lensing.positionData.screenCoords = [mid_x, mid_y];
+        this.lensing.setPosition(this.lensing.positionData.screenCoords);
+        this.lensing.manageLensUpdate();
     }
 
     /** - TODO :: ckpt. 20220706
@@ -172,49 +114,24 @@ export default class Events {
     }
 
     /** - TODO :: ckpt. 20220706
-     * @function handleViewerAuxClick
-     * Adjusts zoom or pan based on an emulated event from scroll
+     * @function handleViewerAuxMove
      *
      * @param {Event} e
      *
      * @returns void
      */
-    handleViewerAuxClick(e) {
+    handleViewerAuxMove(e) {
 
-        // Check if zoom or pan
-        if (e.eventType === 'zoom' || !e.eventType) {
-            if (this.lensing.positionData.zoom && this.lensing.positionData.refPoint && this.lensing.positionData.refPoint.hasOwnProperty('x') && this.lensing.positionData.refPoint.hasOwnProperty('y')) {
+        // Update lensing position reference point
+        this.lensing.positionData.refPoint = this.lensing.viewer.viewport.getCenter(false);
+        const diff = this.lensing.viewerAuxCanvas.width / this.lensing.viewerCanvas.width;
+        const zoom = this.lensing.positionData.zoom * this.lensing.configs.mag / diff;
 
-                // Diff variable
-                const diff = this.lensing.viewerAuxCanvas.width / this.lensing.viewerCanvas.width;
+        // Keep viewerAux in sync with primary viewer
+        this.lensing.viewerAux.viewport.panTo(this.lensing.positionData.refPoint, e.immediately);
+        this.lensing.viewerAux.viewport.zoomTo(zoom, this.lensing.positionData.refPoint, e.immediately);
 
-                // Zoom
-                this.lensing.viewerAux.viewport.zoomTo(this.lensing.positionData.zoom * this.lensing.configs.mag / diff, this.lensing.positionData.refPoint, e.immediately);
-            }
-        } else if (e.eventType === 'pan') {
-            if (this.lensing.positionData.refPoint) {
-
-                // Pan
-                this.lensing.viewerAux.viewport.panTo(this.lensing.positionData.refPoint, e.immediately);
-            }
-        }
-
-        // Events
         this.lensing.manageLensUpdate();
-    }
-
-    /** - TODO :: ckpt. 20220706
-     * @function handleViewerAuxOpen
-     * Handles faux initialization click
-     *
-     * @param {Event} e
-     *
-     * @returns void
-     */
-    handleViewerAuxOpen(e) {
-
-        // Fire click event
-        this.handleViewerAuxClick(e);
     }
 
     /** - TODO :: ckpt. 20220706
@@ -255,18 +172,6 @@ export default class Events {
                 } else if (this.lensing.configs.shape === 'square') {
                     this.lensing.configs.shape = 'circle';
                 }
-            }
-            // Generics
-            this.lensing.configs.counterException = true;
-            this.lensing.manageLensUpdate();
-        }
-
-        // Lens on
-        const keys_onOff = ['l'];
-        if (keys_onOff.includes(e.key)) {
-            // Specifics
-            if (e.key === 'l') {
-                this.lensing.configs.on = !this.lensing.configs.on;
             }
             // Generics
             this.lensing.configs.counterException = true;
