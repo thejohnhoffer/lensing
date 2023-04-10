@@ -21,16 +21,71 @@ export default class Events {
      */
     bulkAttachEvents() {
 
+        const handle_input = (e, padding) => {
+          const scale = 100/padding;
+          const dx = e.movementX * scale;
+          const max = parseInt(e.target.max);
+          const value = parseInt(e.target.value);
+          const opacity = e.target.value / 100;
+          e.target.value = Math.max(0, Math.min(100, value + dx));
+          this.handleLensOpacity(opacity);
+          this.lensing.configs.counterException = true;
+          this.lensing.manageLensUpdate();
+        }
+        const handle_button = (classname) => {
+          if (classname === "lens-input-minus") {
+            this.handleLensResize(false);
+          }
+          else if (classname === "lens-input-plus") {
+            this.handleLensResize(true);
+          }
+        }
         const lens_canvas = this.lensing.overlay.canvas;
 //        this.lensing.rootEl.addEventListener('mousemove', (e) => {
+        this.lensing.viewer.addHandler('canvas-click', (e) => {
+          const classname = e.originalEvent.target.className;
+          const tagname = e.originalEvent.target.tagName;
+          if (tagname === "INPUT") {
+            e.preventDefaultAction = true;
+          }
+          else if (tagname === "BUTTON") {
+            handle_button(classname);
+            e.preventDefaultAction = true;
+            this.lensing.configs.counterException = true;
+            this.lensing.manageLensUpdate();
+          }
+          else if (classname === "lens-input-wrapper") {
+            e.preventDefaultAction = true;
+          }
+        });
         this.lensing.viewer.addHandler('canvas-drag', (e) => {
           const x = e.position.x;
           const y = e.position.y;
+          /*
+           * Unusual workaround, unable to correctly handle
+           * event propogation without this unusual solution
+           */
           const at_point = document.elementsFromPoint(x, y);
           const lens = [...at_point].find((target) => {
             return target.className === "lens_overlay_canvas";
           }) || null;
-          if(lens && e.originalEvent.buttons !== 0) {
+          const classname = e.originalEvent.target.className;
+          const tagname = e.originalEvent.target.tagName;
+          if (tagname === "INPUT") {
+            handle_input(e.originalEvent, this.lensing.padding);
+            e.preventDefaultAction = true;
+          }
+          else if (tagname === "BUTTON") {
+            handle_button(classname);
+            e.preventDefaultAction = true;
+            this.lensing.configs.counterException = true;
+            this.lensing.manageLensUpdate();
+          }
+          else if (classname === "lens-input-wrapper") {
+            handle_input(e.originalEvent, this.lensing.padding);
+            e.preventDefaultAction = true;
+          }
+          else if (lens && e.originalEvent.buttons !== 0) {
             this.lensing.positionData.currentEvent = 'pan';
             this.lensing.positionData.screenCoords = [x, y];
             this.lensing.setPosition(this.lensing.positionData.screenCoords);
@@ -134,6 +189,26 @@ export default class Events {
         this.lensing.manageLensUpdate();
     }
 
+    handleLensOpacity(o) {
+      this.lensing.viewerAux.world._items.forEach(i => {
+        if ([o, i.getOpacity()].every(x => x !== 0)) i.setOpacity(o);
+      })
+    }
+
+    handleLensResize(zoom_in) {
+      const { radInc, radMin, radMax } = this.lensing.configs;
+      if (zoom_in) {
+        if (this.lensing.configs.rad + radInc <= radMax) {
+            this.lensing.configs.rad += radInc;
+        }
+      }
+      else {
+        if (this.lensing.configs.rad - radInc >= radMin) {
+            this.lensing.configs.rad -= radInc;
+        }
+      }
+    }
+
     /** - TODO :: ckpt. 20220706
      * @function handleViewerKeydown
      * Handles keyboard shortcuts
@@ -158,7 +233,6 @@ export default class Events {
             // Generics
             this.lensing.configs.counterException = true;
             this.lensing.manage_slider_update();
-            this.lensing.manage_viewfinder_update();
             this.lensing.manageLensUpdate();
         }
 
@@ -183,13 +257,9 @@ export default class Events {
         if (keys_size.includes(e.key)) {
             // Specifics
             if (e.key === '[') {
-                if (this.lensing.configs.rad - this.lensing.configs.radInc >= this.lensing.configs.radMin) {
-                    this.lensing.configs.rad -= this.lensing.configs.radInc;
-                }
+              this.handleLensResize(false);
             } else if (e.key === ']') {
-                if (this.lensing.configs.rad + this.lensing.configs.radInc <= this.lensing.configs.radMax) {
-                    this.lensing.configs.rad += this.lensing.configs.radInc;
-                }
+              this.handleLensResize(true);
             } else if (e.key === '\\') {
                 this.lensing.configs.rad = this.lensing.configs.radDefault;
             }
@@ -238,16 +308,7 @@ export default class Events {
             this.lensing.viewerAux.raiseEvent('click', {eventType: 'zoom', immediately: true});
         }
 
-        // Lens compass
-        const keys_compass = [';'];
-        if (keys_compass.includes(e.key)) {
-            // Specifics
-            if (e.key === ';') {
-                this.lensing.compass.updateVisibility();
-            }
-        }
-
-        // Lens snapshot
+      // Lens snapshot
         const keys_snapshot = ['D'];
         if (keys_snapshot.includes(e.key)) {
             // Specifics

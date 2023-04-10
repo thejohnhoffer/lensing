@@ -2,11 +2,9 @@
 Lensing
  */
 
-import Compass from './compass';
 import Controls from './controls';
 import Events from './events';
 import Lenses from './lenses';
-import Viewfinder from './viewfinder';
 import Snapshots from './snapshots';
 
 /*
@@ -31,11 +29,9 @@ export default class Lensing {
     dataLoad = null;
 
     // Class refs
-    compass = null;
     controls = null;
     events = null;
     lenses = null;
-    viewfinder = null;
 
     // Components
     overlay = null;
@@ -63,8 +59,6 @@ export default class Lensing {
     configs = {
         addOnBoxFilters: [],
         addOnBoxMagnifiers: [],
-        compassOn: false,
-        compassUnitConversion: null,
         counter: 0,
         counterControl: 2,
         counterException: false,
@@ -91,6 +85,7 @@ export default class Lensing {
 
         // Arriving from source application
         this.osd = _osd;
+        this.NAV_GAP = 40;
         this.viewer = _viewer;
         this.viewerConfig = _viewer_config;
         this.lensingConfig = _lensing_config;
@@ -109,7 +104,7 @@ export default class Lensing {
     /** - TODO :: ckpt. 20220706
      * 1.
      * @function init
-     * Initializes the viewers, overlay, lenses and viewfinders
+     * Initializes the viewers, overlay, lenses 
      *
      * @returns void
      */
@@ -133,19 +128,8 @@ export default class Lensing {
         // Instantiate controls
         this.controls = new Controls(this);
 
-        // Instantiate viewfinder
-        this.viewfinder = new Viewfinder(this);
-
-        // Instantiate compass
-        this.compass = new Compass(this);
-
         // Instantiate snapshots
         this.snapshots = new Snapshots(this);
-
-        // Ck filters / viewfinder setups from data_load - FIXME :: post-"Bare Bones"
-        if (this.dataLoad.length > 0) {
-            this.analyzeDataLoad();
-        }
 
         // Add event listeners to viewer
         this.events = new Events(this);
@@ -153,23 +137,14 @@ export default class Lensing {
         this.recenter();
     }
 
-    recenter() {
-        this.events.handleViewerOpen();
+    get padding () {
+      const px_ratio = this.configs.pxRatio;
+      const diameter = this.configs.rad * 2;
+      return Math.ceil(diameter / px_ratio - this.NAV_GAP*2);
     }
 
-    /** - FIXME :: revisit when data is passed in (post-'bare bones' phase)
-     * @function analyzeDataLoad
-     * Reviews data_load and assigns relevant variables and filters
-     *
-     * @returns void
-     */
-    analyzeDataLoad() {
-        // this.dataLoad.forEach(d => {
-            // Check for filter
-            // this.lenses.checkForDataFilter(d);
-            // Check for viewfinder serup
-            // this.viewfinder.check_for_setup(d);
-        // })
+    recenter() {
+        this.events.handleViewerOpen();
     }
 
     /** - TODO :: ckpt. 20220706
@@ -215,26 +190,141 @@ export default class Lensing {
         // Build container
         const container = document.createElement('div');
         container.setAttribute('class', `overlay_container_${id} overlay_container`);
-        container.setAttribute('style', 'position: absolute; pointer-events: none;');
-        // container.setAttribute('style',
-        //     `height: ${dims[0]}px; pointer-events: none; position: absolute; width: ${dims[1]}px;`);
-
+        container.setAttribute('style', `
+          display: grid;
+          position: absolute;
+          pointer-events: none;
+          clip-path: circle(100px at center);
+          grid-template-columns: ${this.NAV_GAP}px auto ${this.NAV_GAP}px;
+          grid-template-rows: ${this.NAV_GAP}px auto ${this.NAV_GAP}px;
+          justify-content: center;
+          align-content: center;
+          opacity: 90%;
+        `);
         // Append container
         this.viewer.canvas.append(container);
 
+        const lens_range = document.createElement('input');
+        lens_range.setAttribute("type", "range");
+        lens_range.setAttribute("value", "100");
+        lens_range.setAttribute("max", "100");
+        lens_range.setAttribute('style', `
+          pointer-events: all;
+          padding-right: 10px;
+          padding-left: 10px;
+          height: 30px;
+          width: 100px;
+        `);
+        const lens_range_div = document.createElement('div');
+        lens_range_div.className = 'bg-trans';
+        lens_range_div.setAttribute('style', `
+          justify-content: center;
+          align-content: center;
+          display: grid;
+        `);
+        const bottom_div = document.createElement('div')
+        bottom_div.setAttribute('style', `
+          grid-template-columns: 1fr;
+          grid-template-rows: 1fr;
+          justify-content: center;
+          align-content: center;
+          grid-column: 2;
+          display: grid;
+          grid-row: 3;
+        `);
+        const plus_span = document.createElement('span');
+        plus_span.className = 'bg-trans';
+        plus_span.setAttribute('style', `
+          pointer-events: none;
+          padding-top: 5px;
+          color: #007bff;
+          height: 100px;
+          grid-row: 2;
+        `);
+        const plus_button = document.createElement('button');
+        plus_button.className = 'lens-input-plus';
+        plus_button.setAttribute('style', `
+          font-size: ${this.NAV_GAP}px;
+          width: ${this.NAV_GAP}px;
+          grid-template-columns: 1fr;
+          grid-template-rows: 1fr 30px 1fr;
+          justify-content: center;
+          align-content: center;
+          pointer-events: all;
+          line-height: 35px;
+          font-weight: 500;
+          background: none;
+          grid-column: 3;
+          grid-row: 2;
+          border: none;
+          display: grid;
+          padding: 0;
+        `);
+        const minus_span = document.createElement('span');
+        minus_span.className = 'bg-trans';
+        minus_span.setAttribute('style', `
+          pointer-events: none;
+          padding-bottom: 2px;
+          padding-top: 3px;
+          color: #007bff;
+          height: 100px;
+          width: 40px;
+          grid-row: 2;
+        `);
+        const minus_button = document.createElement('button');
+        minus_button.className = 'lens-input-minus';
+        minus_button.setAttribute('style', `
+          grid-column: 1; grid-row: 2;
+          width: ${this.NAV_GAP}px;
+          font-size: ${1.5 * this.NAV_GAP}px;
+          grid-template-rows: 1fr 30px 1fr;
+          grid-template-columns: 1fr;
+          justify-content: center;
+          align-content: center;
+          pointer-events: all;
+          line-height: 35px;
+          font-weight: 400;
+          background: none;
+          border: none;
+          display: grid;
+          padding: 0;
+        `);
+        const padding = document.createElement('div');
+        padding.setAttribute('style', `
+          grid-column: 2; grid-row: 2;
+          justify-content: center;
+          align-content: center;
+          display: grid;
+        `);
+        plus_span.innerText = "+";
+        minus_span.innerText = "-";
+        plus_button.append(plus_span);
+        minus_button.append(minus_span);
+        lens_range_div.append(lens_range);
+        bottom_div.append(lens_range_div);
+        container.append(plus_button);
+        container.append(minus_button);
+        container.append(padding);
+        container.append(bottom_div);
         // Build actualCanvas
         const actualCanvas = document.createElement('canvas');
         actualCanvas.className = 'lens_overlay_canvas';
-        actualCanvas.setAttribute('style',
-            'height: 100%; pointer-events: all; position: absolute; width: 100%;');
+        actualCanvas.setAttribute('style', `
+          pointer-events: all; position: absolute;
+          grid-column: 1/3; grid-row: 1/3;
+        `);
 
         // Append acvtualCanvas to container, container to viewer
         container.append(actualCanvas);
 
         // Return
         return {
+            padding: padding,
             canvas: actualCanvas,
             container: container,
+            lens_range: lens_range,
+            plus_span: plus_span,
+            minus_span: minus_span,
             context: actualCanvas.getContext('2d')
         };
     }
@@ -309,13 +399,29 @@ export default class Lensing {
         // Update overlay dims and position
         const px_ratio = this.configs.pxRatio;
         const diameter = this.configs.rad * 2;
+        const padding =  this.padding + 'px';
         const canvas_diameter = diameter;
         const css_diameter =  Math.ceil(diameter / px_ratio) + 'px';
+        const css_radius =  Math.ceil(0.5 * diameter / px_ratio) + 'px';
         const css_x = Math.round((data.x - this.configs.rad) / px_ratio) + 'px';
         const css_y = Math.round((data.y - this.configs.rad) / px_ratio) + 'px';
 
+        const chord = () => {
+          const a = this.padding;
+          const rad = this.configs.rad;
+          const solution = 2*rad - Math.sqrt(4*rad**2 - a**2);
+          return Math.ceil(this.padding - solution / 2) + 'px';
+        }
+        this.overlay.padding.style.width = padding;
+        this.overlay.padding.style.height = chord();
+        this.overlay.lens_range.style.width = padding;
         this.overlay.canvas.style.width = css_diameter;
         this.overlay.canvas.style.height = css_diameter;
+        this.overlay.plus_span.style.height = css_radius;
+        this.overlay.minus_span.style.height = css_radius;
+        this.overlay.container.style.width = css_diameter;
+        this.overlay.container.style.height = css_diameter;
+        this.overlay.container.style.clipPath = `circle(${css_radius} at center)`;
         if (this.overlay.canvas.width !== canvas_diameter) {
           this.overlay.canvas.setAttribute('width', canvas_diameter + 'px');
         }
@@ -417,6 +523,14 @@ export default class Lensing {
      */
     manageLensUpdate() {
 
+        const over_class = "overlay_container";
+        const over = [...document.getElementsByClassName(over_class)];
+        if (this.configs.shape === "") {
+          over.forEach(o => o.classList.add("d-none"));
+        }
+        else {
+          over.forEach(o => o.classList.remove("d-none"));
+        }
         // Check pos and placement
         // if (this.positionData.pos.length > 0 && !this.configs.placed) {
         if (this.positionData.pos.length > 0) {
@@ -449,11 +563,6 @@ export default class Lensing {
                 this.setPixel(ctx);
             }
 
-            // If compass is on - FIXME :: post-"Bare bones"
-            if (this.configs.compassOn) {
-                this.compass.wrangle();
-            }
-
             // Draw
             this.drawLens({
                 x: this.positionData.pos[0],
@@ -479,32 +588,6 @@ export default class Lensing {
         this.controls.slider.max = filter.settings.max;
         this.controls.slider.value = filter.settings.default;
         this.controls.slider.step = filter.settings.step;
-    }
-
-    /**
-     * @function manage_viewfinder_update
-     * Updates viewfinder visibility
-     *
-     * @returns void
-     */
-    manage_viewfinder_update() {
-
-        // If has setup, destroy
-        if (this.viewfinder.setup) {
-            this.viewfinder.refresh();
-        }
-
-        // Update viewfinder
-        this.viewfinder.on = this.lenses.selections.filter.settings.vf;
-        if (this.viewfinder.on) {
-
-            // Set new setup and init
-            this.viewfinder.setup =
-                this.viewfinder.setups.find(s => s.name === this.lenses.selections.filter.settings.vf_setup);
-            if (this.viewfinder.setup) {
-                this.viewfinder.setup.init();
-            }
-        }
     }
 
     /** - TODO :: ckpt. 20220706

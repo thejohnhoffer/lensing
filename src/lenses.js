@@ -131,9 +131,6 @@ export default class Lenses {
             }
         }
 
-        // Update viewfinder
-        this.lensing.viewfinder.wrangle();
-
         // Return modified image data
         const copyData = new Uint8ClampedArray(this.imgData.copy.data);
         // KEEP4REF // console.log(copyImageData, Math.sqrt(copyImageData.data.length / 4));
