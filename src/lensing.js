@@ -194,7 +194,6 @@ export default class Lensing {
           display: grid;
           position: absolute;
           pointer-events: none;
-          clip-path: circle(100px at center);
           grid-template-columns: ${this.NAV_GAP}px auto ${this.NAV_GAP}px;
           grid-template-rows: ${this.NAV_GAP}px auto ${this.NAV_GAP}px;
           justify-content: center;
@@ -224,6 +223,7 @@ export default class Lensing {
         `);
         const bottom_div = document.createElement('div')
         bottom_div.setAttribute('style', `
+          opacity: 0;
           grid-template-columns: 1fr;
           grid-template-rows: 1fr;
           justify-content: center;
@@ -244,6 +244,7 @@ export default class Lensing {
         const plus_button = document.createElement('button');
         plus_button.className = 'lens-input-plus';
         plus_button.setAttribute('style', `
+          opacity: 0;
           font-size: ${this.NAV_GAP}px;
           width: ${this.NAV_GAP}px;
           grid-template-columns: 1fr;
@@ -274,6 +275,7 @@ export default class Lensing {
         const minus_button = document.createElement('button');
         minus_button.className = 'lens-input-minus';
         minus_button.setAttribute('style', `
+          opacity: 0;
           grid-column: 1; grid-row: 2;
           width: ${this.NAV_GAP}px;
           font-size: ${1.5 * this.NAV_GAP}px;
@@ -421,7 +423,7 @@ export default class Lensing {
         this.overlay.minus_span.style.height = css_radius;
         this.overlay.container.style.width = css_diameter;
         this.overlay.container.style.height = css_diameter;
-        this.overlay.container.style.clipPath = `circle(${css_radius} at center)`;
+//        this.overlay.container.style.clipPath = `circle(${css_radius} at center)`;
         if (this.overlay.canvas.width !== canvas_diameter) {
           this.overlay.canvas.setAttribute('width', canvas_diameter + 'px');
         }
